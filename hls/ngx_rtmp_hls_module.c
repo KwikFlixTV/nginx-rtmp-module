@@ -114,6 +114,7 @@ typedef struct {
     ngx_str_t                           key_path;
     ngx_str_t                           key_url;
     ngx_uint_t                          frags_per_key;
+    ngx_uint_t                          cut_frags;
 } ngx_rtmp_hls_app_conf_t;
 
 
@@ -306,6 +307,13 @@ static ngx_command_t ngx_rtmp_hls_commands[] = {
       ngx_conf_set_num_slot,
       NGX_RTMP_APP_CONF_OFFSET,
       offsetof(ngx_rtmp_hls_app_conf_t, frags_per_key),
+      NULL },
+
+    { ngx_string("hls_cut_fragments"),
+      NGX_RTMP_MAIN_CONF|NGX_RTMP_SRV_CONF|NGX_RTMP_APP_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_RTMP_APP_CONF_OFFSET,
+      offsetof(ngx_rtmp_hls_app_conf_t, cut_frags),
       NULL },
 
     ngx_null_command
@@ -554,8 +562,11 @@ ngx_rtmp_hls_write_playlist(ngx_rtmp_session_t *s)
     }
 
     prev_key_id = 0;
-
-    for (i = 0; i < ctx->nfrags; i++) {
+    ngx_uint_t ln = ctx->nfrags;
+    if(hacf->cut_frags != 0){
+       if(ln > hacf->cut_frags)ln -= hacf->cut_frags;
+    }
+    for (i = 0; i < ln; i++) {
         f = ngx_rtmp_hls_get_frag(s, i);
 
         p = buffer;
@@ -2300,6 +2311,7 @@ ngx_rtmp_hls_create_app_conf(ngx_conf_t *cf)
     conf->granularity = NGX_CONF_UNSET;
     conf->keys = NGX_CONF_UNSET;
     conf->frags_per_key = NGX_CONF_UNSET_UINT;
+    conf->cut_frags = NGX_CONF_UNSET_UINT;
 
     return conf;
 }
@@ -2448,3 +2460,4 @@ ngx_rtmp_hls_postconfiguration(ngx_conf_t *cf)
 
     return NGX_OK;
 }
+
